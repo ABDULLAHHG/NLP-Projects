@@ -48,15 +48,15 @@ class AutoregressiveModel(nn.Module):
     def forward(self, x):
         embedded = self.embedding(x)
         out, _ = self.lstm(embedded)
-        out = self.fc(out[:, -1, :]) #Only take the last hidden state output
+        out = self.fc(out) # Output shape is now (batch_size, seq_length, vocab_size)
         return out
 
-
-# Create dataset and dataloader
+# Create dataset and dataloader (unchanged)
 dataset = CharDataset(text, seq_length)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+dataloader = DataLoader(dataset, batch_size=1, shuffle=True) #batch size is 1
 
-# Initialize model, optimizer, and loss function
+
+# Initialize model, optimizer, and loss function (unchanged)
 model = AutoregressiveModel(vocab_size, embedding_dim, hidden_dim)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.CrossEntropyLoss()
@@ -67,7 +67,7 @@ for epoch in range(num_epochs):
     for input_seq, target_seq in dataloader:
         optimizer.zero_grad()
         output = model(input_seq)
-        loss = criterion(output, target_seq.squeeze(0))
+        loss = criterion(output.view(-1, vocab_size), target_seq.view(-1))
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -81,8 +81,8 @@ def generate_text(model, start_char, length):
         input_tensor = torch.tensor([char_to_ix[start_char]])
         generated_text = start_char
         for i in range(length):
-            output = model(input_tensor)
-            predicted_index = torch.argmax(output).item()
+            output = model(input_tensor.unsqueeze(0)) 
+            predicted_index = torch.argmax(output[:, -1, :]).item()
             predicted_char = ix_to_char[predicted_index]
             generated_text += predicted_char
             input_tensor = torch.tensor([predicted_index])
@@ -90,4 +90,3 @@ def generate_text(model, start_char, length):
 
 generated_text = generate_text(model, 'T', 50)
 print(f"Generated text: {generated_text}")
-
